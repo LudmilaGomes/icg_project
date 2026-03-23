@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <math.h>
 #define TINYOBJ_LOADER_C_IMPLEMENTATION
 #include "tinyobj_loader_c.h"
 #include <GL/glut.h>
@@ -9,17 +9,25 @@
 int largura = 1280;
 int altura = 720;
 float pos_x = 0.0;
-float pos_y = 10.0;
+float pos_y = 4.0;
 float pos_z = 100.0;
+float yaw = 0.0f;
+float dir_x = 0.0f;
+float dir_y = 0.0f;
+float dir_z = -1.0f;
+
+//====================ESTRUTURA PARA MODELOS====================
+typedef struct {
+    tinyobj_attrib_t attrib;
+    tinyobj_shape_t *shapes;
+    size_t num_shapes;
+    tinyobj_material_t *materials;
+    size_t num_materials;
+    int pronto;
+    GLuint displayList;
+} Modelo3D;
 
 //====================CARREGA MODELO====================
-tinyobj_attrib_t attrib;
-tinyobj_shape_t *shapes = NULL;
-size_t num_shapes;
-tinyobj_material_t *materials = NULL;
-size_t num_materials;
-int modelo_pronto = 0;
-
 static void file_reader(void *ctx, const char *filename, int is_mtl, const char *obj_filename, char **buffer, size_t *len)
 {
     FILE *f = fopen(filename, "rb");
@@ -35,7 +43,6 @@ static void file_reader(void *ctx, const char *filename, int is_mtl, const char 
     *len = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    // aloca memória (tamanho +1 para o caractere nulo '\0' da string)
     *buffer = (char *)malloc(*len + 1);
     if (*buffer)
     {
@@ -46,87 +53,82 @@ static void file_reader(void *ctx, const char *filename, int is_mtl, const char 
     fclose(f);
 }
 
-int carregaObj()
+int carregaObjModelo(Modelo3D *modelo, const char *caminho_obj)
 {
-    // inicializa campos
-    attrib.vertices = NULL;
-    attrib.num_vertices = 0;
-    attrib.normals = NULL;
-    attrib.num_normals = 0;
-    attrib.texcoords = NULL;
-    attrib.num_texcoords = 0;
-    attrib.faces = NULL;
-    attrib.num_faces = 0;
-    attrib.face_num_verts = NULL;
-    attrib.num_face_num_verts = 0;
-    attrib.material_ids = NULL;
+    modelo->attrib.vertices = NULL;
+    modelo->attrib.num_vertices = 0;
+    modelo->attrib.normals = NULL;
+    modelo->attrib.num_normals = 0;
+    modelo->attrib.texcoords = NULL;
+    modelo->attrib.num_texcoords = 0;
+    modelo->attrib.faces = NULL;
+    modelo->attrib.num_faces = 0;
+    modelo->attrib.face_num_verts = NULL;
+    modelo->attrib.num_face_num_verts = 0;
+    modelo->attrib.material_ids = NULL;
 
-    // leitura de .obj e .mtl - tinyobjloader-c
-    const char *caminho_obj = "My_stagecoach.obj";
-    int ret = tinyobj_parse_obj(&attrib, &shapes, &num_shapes,
-                                &materials, &num_materials,
+    modelo->shapes = NULL;
+    modelo->num_shapes = 0;
+    modelo->materials = NULL;
+    modelo->num_materials = 0;
+    modelo->pronto = 0;
+    modelo->displayList = 0;
+
+    int ret = tinyobj_parse_obj(&modelo->attrib, &modelo->shapes, &modelo->num_shapes,
+                                &modelo->materials, &modelo->num_materials,
                                 caminho_obj, file_reader, NULL,
                                 TINYOBJ_FLAG_TRIANGULATE);
 
     if (ret == TINYOBJ_SUCCESS)
     {
-        modelo_pronto = 1;
+        modelo->pronto = 1;
+        printf("Modelo carregado com sucesso: %s\n", caminho_obj);
         return 0;
     }
-    return -1;
+    else
+    {
+        fprintf(stderr, "Falha ao carregar o modelo: %s\n", caminho_obj);
+        return -1;
+    }
 }
 
-void renderizaModeloCarregado()
+//====================RENDERIZA MODELO====================
+void renderizaModelo(Modelo3D *modelo)
 {
-    if (modelo_pronto != 1 || attrib.material_ids == NULL)
+    if (!modelo->pronto || modelo->attrib.material_ids == NULL)
         return;
 
-    // se houver hierarquia de partes do modelo, percorremos todos os componentes
-    for (size_t s = 0; s < num_shapes; s++)
+    for (size_t s = 0; s < modelo->num_shapes; s++)
     {
         glBegin(GL_TRIANGLES);
-
-        // percorremos todos os poligonos pertencentes ao shape s
-        for (size_t f = 0; f < shapes[s].length; f++)
+        for (size_t f = 0; f < modelo->shapes[s].length; f++)
         {
-            // offset para shape atual + n do poligono atual = indice 'global' do poligono atual no array
-            size_t global_face_id = shapes[s].face_offset + f;
-            // cada poligono tem um material correspondente
-            int matid = attrib.material_ids[global_face_id];
+            size_t global_face_id = modelo->shapes[s].face_offset + f;
+            int matid = modelo->attrib.material_ids[global_face_id];
 
-            // verifica se matid eh valido
-            if (matid >= 0 && matid < num_materials)
+            if (matid >= 0 && matid < modelo->num_materials)
             {
-                // usa iluminacao difusa armazenada em materials[matid].diffuse[0 - R, 1 - G, 2 - B]
-                glColor3f(materials[matid].diffuse[0],
-                          materials[matid].diffuse[1],
-                          materials[matid].diffuse[2]);
-            }
-            else
-            {
-                printf("matid (ID do material) nao foi encontrado!\n");
-                return;
+                glColor3f(modelo->materials[matid].diffuse[0],
+                          modelo->materials[matid].diffuse[1],
+                          modelo->materials[matid].diffuse[2]);
             }
 
-            // acessa os tres vertices do poligono atual
             for (size_t v = 0; v < 3; v++)
             {
-                // indice para vertices do poligono atual
-                size_t face_vertex_id = (shapes[s].face_offset + f) * 3 + v; // cada poligono tem tres vertices
-                // attrib.faces guarda os indices de v (x, y, z), vn (x, y, z), vt (u, v) em id
-                tinyobj_vertex_index_t id = attrib.faces[face_vertex_id];
+                size_t face_vertex_id = (modelo->shapes[s].face_offset + f) * 3 + v;
+                tinyobj_vertex_index_t id = modelo->attrib.faces[face_vertex_id];
 
                 if (id.vn_idx >= 0)
                 {
-                    glNormal3f(attrib.normals[3 * id.vn_idx + 0],
-                               attrib.normals[3 * id.vn_idx + 1],
-                               attrib.normals[3 * id.vn_idx + 2]);
+                    glNormal3f(modelo->attrib.normals[3 * id.vn_idx + 0],
+                               modelo->attrib.normals[3 * id.vn_idx + 1],
+                               modelo->attrib.normals[3 * id.vn_idx + 2]);
                 }
                 if (id.v_idx >= 0)
                 {
-                    glVertex3f(attrib.vertices[3 * id.v_idx + 0],
-                               attrib.vertices[3 * id.v_idx + 1],
-                               attrib.vertices[3 * id.v_idx + 2]);
+                    glVertex3f(modelo->attrib.vertices[3 * id.v_idx + 0],
+                               modelo->attrib.vertices[3 * id.v_idx + 1],
+                               modelo->attrib.vertices[3 * id.v_idx + 2]);
                 }
             }
         }
@@ -134,14 +136,23 @@ void renderizaModeloCarregado()
     }
 }
 
+//====================CRIA DISPLAY LIST====================
+void criaDisplayListModelo(Modelo3D *modelo)
+{
+    if (!modelo->pronto) return;
+
+    modelo->displayList = glGenLists(1);
+    glNewList(modelo->displayList, GL_COMPILE);
+    renderizaModelo(modelo);
+    glEndList();
+}
+
 //====================OBJETOS====================
 void chao()
 {
     glColor3f(0.8, 0.7, 0.5);
-
     float tam_x = 100.0;
     float tam_z = 100.0;
-
     glBegin(GL_QUADS);
     glVertex3f(-tam_x, 0.0, -tam_z);
     glVertex3f(-tam_x, 0.0, tam_z);
@@ -153,132 +164,167 @@ void chao()
 void caminho()
 {
     glColor3f(0.7, 0.6, 0.4);
+    float tam_x = 15.0;   //Largura
+    float tam_z = 50.0;   //Comprimento
+    float aux = 0.01;
+    glBegin(GL_QUADS);
+    glVertex3f(-tam_x, aux, -tam_z);
+    glVertex3f(-tam_x, aux, tam_z + 50.0);
+    glVertex3f(tam_x, aux, tam_z + 50.0);
+    glVertex3f(tam_x, aux, -tam_z);
+    glEnd();
+}
 
-    float tam_x = 10.0;
-    float tam_Z = 100.0;
-    float aux = 0.01; // Improviso para evitar z-fighting com o chao
+void caminho2()
+{
+    glPushMatrix();
+    glTranslatef(0.0f, 0.0f, -50.0f); //Move para o final do caminho 1
+    glColor3f(0.7, 0.6, 0.4);
+
+    float tam_x = 100.0;
+    float tam_z = 15.0;
+    float aux = 0.01;
 
     glBegin(GL_QUADS);
-    glVertex3f(-tam_x, aux, -tam_Z);
-    glVertex3f(-tam_x, aux, tam_Z);
-    glVertex3f(tam_x, aux, tam_Z);
-    glVertex3f(tam_x, aux, -tam_Z);
+    glVertex3f(-tam_x, aux, -tam_z);
+    glVertex3f(-tam_x, aux, tam_z);
+    glVertex3f(tam_x, aux, tam_z);
+    glVertex3f(tam_x, aux, -tam_z);
     glEnd();
+
+    glPopMatrix();
 }
 
 void paredesHorizonte()
 {
     glColor3f(0.0, 0.6, 1.0);
-
     float tam_X = 100.0;
     float tam_y = 100.0;
     float tam_Z = 100.0;
 
     glBegin(GL_QUADS);
+    //Fundo
+    glNormal3f(0.0, 0.0, 1.0); //Normal apontando para frente
+    glVertex3f(-tam_X, 0.0, -tam_Z);
+    glVertex3f(tam_X, 0.0, -tam_Z);
+    glVertex3f(tam_X, tam_y, -tam_Z);
+    glVertex3f(-tam_X, tam_y, -tam_Z);
 
-    // Referencia do ponto de vista -> como se estivesse de frente para a parede
+    //Frente
+    glNormal3f(0.0, 0.0, -1.0); //Normal apontando para trás
+    glVertex3f(-tam_X, 0.0, tam_Z);
+    glVertex3f(-tam_X, tam_y, tam_Z);
+    glVertex3f(tam_X, tam_y, tam_Z);
+    glVertex3f(tam_X, 0.0, tam_Z);
 
-    // Parede do fundo
-    glVertex3f(-tam_X, 0.0, -tam_Z);   // inferior esquerdo
-    glVertex3f(-tam_X, tam_y, -tam_Z); // superior esquerdo
-    glVertex3f(tam_X, tam_y, -tam_Z);  // superior direito
-    glVertex3f(tam_X, 0.0, -tam_Z);    // inferior direito
+    //Esquerda
+    glNormal3f(1.0, 0.0, 0.0); //Normal apontando para direita
+    glVertex3f(-tam_X, 0.0, -tam_Z);
+    glVertex3f(-tam_X, tam_y, -tam_Z);
+    glVertex3f(-tam_X, tam_y, tam_Z);
+    glVertex3f(-tam_X, 0.0, tam_Z);
 
-    // Parede da frente
-    glVertex3f(-tam_X, 0.0, tam_Z);   // inferior esquerdo
-    glVertex3f(-tam_X, tam_y, tam_Z); // superior esquerdo
-    glVertex3f(tam_X, tam_y, tam_Z);  // superior direito
-    glVertex3f(tam_X, 0.0, tam_Z);    // inferior direito
+    //Direita
+    glNormal3f(-1.0, 0.0, 0.0); //Normal apontando para esquerda
+    glVertex3f(tam_X, 0.0, -tam_Z);
+    glVertex3f(tam_X, 0.0, tam_Z);
+    glVertex3f(tam_X, tam_y, tam_Z);
+    glVertex3f(tam_X, tam_y, -tam_Z);
 
-    // Parede da esq
-    glVertex3f(-tam_X, 0.0, -tam_Z);   // inferior direito
-    glVertex3f(-tam_X, tam_y, -tam_Z); // superior direito
-    glVertex3f(-tam_X, tam_y, tam_Z);  // superior esquerdo
-    glVertex3f(-tam_X, 0.0, tam_Z);    // inferior esquerdo
-
-    // Parede da dir
-    glVertex3f(tam_X, 0.0, -tam_Z);   // inferior esquerdo
-    glVertex3f(tam_X, tam_y, -tam_Z); // superior esquerdo
-    glVertex3f(tam_X, tam_y, tam_Z);  // superior direito
-    glVertex3f(tam_X, 0.0, tam_Z);    // inferior direito
-
-    // Teto
-    glVertex3f(-tam_X, tam_y, tam_Z);  // esquerda inferior
-    glVertex3f(-tam_X, tam_y, -tam_Z); // esqueda superior
-    glVertex3f(tam_X, tam_y, tam_Z);   // direita inferior
-    glVertex3f(tam_X, tam_y, -tam_Z);  // direita superior
-
+    //Teto
+    glNormal3f(0.0, 1.0, 0.0); //Normal apontando para cima
+    glVertex3f(-tam_X, tam_y, -tam_Z);
+    glVertex3f(tam_X, tam_y, -tam_Z);
+    glVertex3f(tam_X, tam_y, tam_Z);
+    glVertex3f(-tam_X, tam_y, tam_Z);
     glEnd();
 }
 
-void saloon()
-{
-    // Numeros apenas para nao me perder nos push/pop matrix
-    glPushMatrix(); // 1
-    glTranslatef(0.0, 0.0, -30.0);
-
-    glColor3f(0.5, 0.3, 0.1);
-
-    glPushMatrix(); // 2
-    glScalef(25.0, 28.0, 12.0);
-    glutSolidCube(1.0);
-    glPopMatrix(); // 2
-
-    glPushMatrix();               // 3
-    glTranslatef(0.0, 15.0, 6.1); // 6.1, o 0.1 é para evitar z-fighting
-    glColor3f(0.7, 0.3, 0.1);
-
-    glPushMatrix(); // 4
-    glScalef(25.0, 8.0, 0.5);
-    glutSolidCube(1.0);
-    glPopMatrix(); // 4
-
-    glPopMatrix(); // 3
-
-    glPopMatrix(); // 1
-}
-
-void bolaDeFeno_e_NaoDePoeira() // (¬_¬)
+void bolaDeFeno_e_NaoDePoeira()
 {
     glPushMatrix();
-
-    glTranslatef(8.0, 1.0, 60.0);
+    glTranslatef(8.0, 1.0, -45.0);
     glColor3f(0.8, 0.9, 0.3);
     glutSolidSphere(1.2, 20.0, 20.0);
-
     glPopMatrix();
 }
 
-void cubo(float x, float y, float z)
-{ // Funcao para ajudar no desenho das casas
-    glPushMatrix();
-    glScalef(x, y, z);
-    glutSolidCube(1.0);
-    glPopMatrix();
-}
-
-void casa(float x, float z)
+//Funcao usada para desenhar os objetos, sendo necessario passar a posicao no mundo, o modelo a ser construido
+//Sua angulacao e componentes da escala
+void desenhaModeloInstancia(float x, float y, float z, Modelo3D *modelo, float angulo_y, float sx, float sy, float sz)
 {
-    glPushMatrix();
-    glTranslatef(x, 0.0, z);
-    glColor3f(0.5, 0.3, 0.2);
-    cubo(15.0, 12.0, 12.0);
+    if (!modelo->pronto || modelo->displayList == 0){
+        return;
+    }
 
     glPushMatrix();
-    glTranslatef(0.0, 7.0, 0.0);
-    glColor3f(0.7, 0.5, 0.2);
-    cubo(16.0, 3.0, 13.0);
-    glPopMatrix();
-
+    glTranslatef(x, y, z);
+    glRotatef(angulo_y, 0.0, 1.0, 0.0);
+    glScalef(sx, sy, sz);
+    glCallList(modelo->displayList);
     glPopMatrix();
 }
-//==============================================
 
-// FUNCOES EM SI
+//====================CIDADE====================
+void cidade(Modelo3D *carruagem, Modelo3D *saloon, Modelo3D *casa1, Modelo3D *casa2, Modelo3D *general_store,
+            Modelo3D *guns_store, Modelo3D *hotel, Modelo3D *bank, Modelo3D *sheriff)
+{
+    chao();
+    caminho();
+    caminho2();
+    paredesHorizonte();
+    bolaDeFeno_e_NaoDePoeira();
 
+    desenhaModeloInstancia(5.0, 0.01, 40.0, carruagem, 0.0, 2.2, 2.2, 2.2);
+
+    //DE FRENTE AO SALOON
+    desenhaModeloInstancia(-57.0, 0.01, -34.0, hotel, 90.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(-85.0, 0.01, -32.0, casa1, 90.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(58.0, 0.01, -34.0, casa2, 90.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(88.0, 0.01, -33.0, casa1, 90.0, 4.0, 4.0, 4.0);
+
+    //AO LADO DO SALOON/DE FRENTRE PARA A RUA PRINCIPAL
+    desenhaModeloInstancia(0.0, 0.01, -75.0, saloon, -90.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(45.0, 0.01, -70.0, hotel, -90.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(75.0, 0.01, -70.0, casa1, -90.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(-45.0, 0.01, -70.0, bank, -90.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(-78.0, 0.01, -70.0, sheriff, -90.0, 4.0, 4.0, 4.0);
+
+    //DIREITA DA RUA PRINCIPAL
+    desenhaModeloInstancia(20.0, 0.01, 85.0, casa1, 180.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(20.0, 0.01, 57.5, casa2, 180.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(20.0, 0.01, 29.0, general_store, 180.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(20.0, 0.01, 0.5, guns_store, 180.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(20.0, 0.01, -27.5, casa1, 180.0, 4.0, 4.0, 4.0);
+
+    //ESQUERDA DA RUA PRINCIPAL
+    desenhaModeloInstancia(-20.0, 0.01, 85.0, casa1, 0.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(-20.0, 0.01, 57.5, casa2, 0.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(-20.0, 0.01, 29.0, casa1, 0.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(-20.0, 0.01, 0.5, casa1, 0.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(-20.0, 0.01, -27.5, casa2, 0.0, 4.0, 4.0, 4.0);
+}
+//====================FUNCOES GLUT====================
 void init()
 {
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
     glClearColor(0.0, 0.0, 0.0, 1.0);
 }
 
@@ -286,24 +332,26 @@ void display()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
-    gluLookAt(pos_x, pos_y, pos_z, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0); // Ainda ajustando o lookfrom_y para parecer a altura de uma pessoa
 
-    chao();
-    caminho();
-    paredesHorizonte();
-    saloon();
+    //Configuracoes para camera que nao fica presa olhando para a origem (mais proximo do que estamos acostumado em jogos)
+    dir_x = sin(yaw);
+    dir_z = -cos(yaw);
+    gluLookAt(pos_x, pos_y, pos_z, pos_x + dir_x, pos_y + dir_y, pos_z + dir_z, 0.0, 1.0, 0.0);
 
-    glPushMatrix();
-    glTranslatef(0.0, 0.0, 20.0);
-    glScalef(3.0, 3.0, 3.0);
-    renderizaModeloCarregado();
-    glPopMatrix();
+    //Esses extern Modelo3D sao necessarios para poder passa-los como parametros
+    extern Modelo3D carruagem;
+    extern Modelo3D saloon;
+    extern Modelo3D hotel;
+    extern Modelo3D guns_store;
+    extern Modelo3D general_store;
+    extern Modelo3D sheriff;
+    extern Modelo3D bank;
+    extern Modelo3D casa1;
+    extern Modelo3D casa2;
+    extern Modelo3D casa_grande;
 
-    bolaDeFeno_e_NaoDePoeira();
-    casa(-25.0, 70.0);
-    casa(25.0, 70.0);
-
-    carregaObj("My_stagecoach.obj");
+    //Aqui na display basta chamar cidade(), todos os objetos sao instanciados la
+    cidade(&carruagem, &saloon, &casa1, &casa2, &general_store, &guns_store, &hotel, &bank, &sheriff);
 
     glutSwapBuffers();
 }
@@ -313,31 +361,48 @@ void reshape(int w, int h)
     glViewport(0, 0, (GLsizei)w, (GLsizei)h);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(60.0, (GLfloat)w / (GLfloat)h, 0.1, 400.0); // Valores ajustados para se adequar a cena
+    gluPerspective(60.0, (GLfloat)w / (GLfloat)h, 0.1, 400.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
 
 void keyboard(unsigned char key, int x, int y)
 {
+    float vel = 1.0;
 
     switch (key)
     {
-    case 'w':
-        pos_z -= 1.0;
-        break;
-    case 'a':
-        pos_x -= 1.0;
-        break;
-    case 's':
-        pos_z += 1.0;
-        break;
-    case 'd':
-        pos_x += 1.0;
-        break;
-    case 27:
-        exit(0);
-        break;
+        case 'w':
+            pos_x += dir_x * vel;
+            pos_z += dir_z * vel;
+            break;
+
+        case 's':
+            pos_x -= dir_x * vel;
+            pos_z -= dir_z * vel;
+            break;
+
+        case 'a':
+            pos_x += dir_z * vel;
+            pos_z -= dir_x * vel;
+            break;
+
+        case 'd':
+            pos_x -= dir_z * vel;
+            pos_z += dir_x * vel;
+            break;
+
+        case 'q':
+            yaw -= 0.1;
+            break;
+
+        case 'e':
+            yaw += 0.1;
+            break;
+
+        case 27:
+            exit(0);
+            break;
     }
 
     glutPostRedisplay();
@@ -349,14 +414,54 @@ void velAnimacao(int value)
     glutTimerFunc(16, velAnimacao, 0);
 }
 
+//====================MAIN====================
+
+//Necessário cria a variável aqui para carregar o modelo
+Modelo3D carruagem;
+Modelo3D saloon;
+Modelo3D hotel;
+Modelo3D guns_store;
+Modelo3D general_store;
+Modelo3D sheriff;
+Modelo3D bank;
+Modelo3D casa1;
+Modelo3D casa2;
+Modelo3D casa_grande;
+
 int main(int argc, char **argv)
 {
-
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(largura, altura);
     glutCreateWindow(argv[0]);
     init();
+
+    //Modelos devem ser carregados aqui
+    carregaObjModelo(&carruagem, "My_stagecoach.obj");
+    carregaObjModelo(&saloon, "saloon.obj");
+    carregaObjModelo(&hotel, "hotel.obj");
+    carregaObjModelo(&guns_store, "guns_store.obj");
+    carregaObjModelo(&general_store, "general_store.obj");
+    carregaObjModelo(&sheriff, "sheriff.obj");
+    carregaObjModelo(&bank, "bank.obj");
+    carregaObjModelo(&casa1, "casa1.obj");
+    carregaObjModelo(&casa2, "casa2.obj");
+    carregaObjModelo(&casa_grande, "casa_grande.obj");
+
+    //Display list armazena o modelo já compilado pelo OpenGL (evita recalcular vértices a cada frame)
+    //Melhora desempenho -> substitui várias chamadas glVertex/glNormal por um único glCallList()
+    //Permite criar múltiplas instâncias de um mesmo modelo já carregado
+    criaDisplayListModelo(&carruagem);
+    criaDisplayListModelo(&saloon);
+    criaDisplayListModelo(&hotel);
+    criaDisplayListModelo(&guns_store);
+    criaDisplayListModelo(&general_store);
+    criaDisplayListModelo(&sheriff);
+    criaDisplayListModelo(&bank);
+    criaDisplayListModelo(&casa1);
+    criaDisplayListModelo(&casa2);
+    criaDisplayListModelo(&casa_grande);
+
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
