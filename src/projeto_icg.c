@@ -324,20 +324,19 @@ void cidade(Modelo3D *carruagem, Modelo3D *saloon, Modelo3D *casa1, Modelo3D *ca
     desenhaModeloInstancia(-50.0, aux, -90.0, dynamite_b, 90.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(-47.0, aux, -90.0, dynamite_b, 90.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(-15.0, aux, 112.0, lantern, 120.0, 3.0, 3.0, 3.0);
-    //====================CACTOS FORA DA CIDADE====================
 
-//Lado esquerdo (bem afastado)
+    //ESQUERDA DA CIDADE
     desenhaModeloInstancia(-140.0, aux, 140.0, cactus_a, 0.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(-160.0, aux, 60.0, cactus_b, 0.0, 3.5, 3.5, 3.5);
     desenhaModeloInstancia(-130.0, aux, -20.0, cactus_c, 0.0, 2.8, 2.8, 2.8);
     desenhaModeloInstancia(-170.0, aux, -100.0, cactus_d, 0.0, 3.2, 3.2, 3.2);
 
-    //Lado direito (bem afastado)
+    //DIREITA DA CIDADE
     desenhaModeloInstancia(140.0, aux, 130.0, cactus_b, 0.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(165.0, aux, 40.0, cactus_c, 0.0, 3.5, 3.5, 3.5);
     desenhaModeloInstancia(135.0, aux, -40.0, cactus_a, 0.0, 2.5, 2.5, 2.5);
 
-    //Frente (antes da cidade)
+    //ANTES DA CIDADE
     desenhaModeloInstancia(-100.0, aux, -170.0, cactus_d, 0.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(100.0, aux, -180.0, cactus_a, 0.0, 3.0, 3.0, 3.0);
 
