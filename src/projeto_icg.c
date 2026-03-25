@@ -10,11 +10,26 @@ int largura = 1280;
 int altura = 720;
 float pos_x = 0.0;
 float pos_y = 4.0;
-float pos_z = 100.0;
-float yaw = 0.0f;
-float dir_x = 0.0f;
-float dir_y = 0.0f;
-float dir_z = -1.0f;
+float pos_z = 140.0;
+float yaw = 0.0;
+float dir_x = 0.0;
+float dir_y = 0.0;
+float dir_z = -1.0;
+float t_bola = 0.0;
+
+void bezierFeno(float t, float *p0, float *p1, float *p2, float *p3, float *pos)
+{
+    float u = 1.0 - t;
+
+    float b0 = pow(u, 3);
+    float b1 = 3 * pow(u, 2) * t;
+    float b2 = 3 * u * pow(t, 2);
+    float b3 = pow(t, 3);
+
+    pos[0] = b0*p0[0] + b1*p1[0] + b2*p2[0] + b3*p3[0];
+    pos[1] = b0*p0[1] + b1*p1[1] + b2*p2[1] + b3*p3[1];
+    pos[2] = b0*p0[2] + b1*p1[2] + b2*p2[2] + b3*p3[2];
+}
 
 //====================ESTRUTURA PARA MODELOS====================
 typedef struct {
@@ -151,8 +166,8 @@ void criaDisplayListModelo(Modelo3D *modelo)
 void chao()
 {
     glColor3f(0.8, 0.7, 0.5);
-    float tam_x = 100.0;
-    float tam_z = 100.0;
+    float tam_x = 200.0;
+    float tam_z = 200.0;
     glBegin(GL_QUADS);
     glVertex3f(-tam_x, 0.0, -tam_z);
     glVertex3f(-tam_x, 0.0, tam_z);
@@ -165,7 +180,7 @@ void caminho()
 {
     glColor3f(0.7, 0.6, 0.4);
     float tam_x = 15.0;   //Largura
-    float tam_z = 50.0;   //Comprimento
+    float tam_z = 150.0;   //Comprimento
     float aux = 0.01;
     glBegin(GL_QUADS);
     glVertex3f(-tam_x, aux, -tam_z);
@@ -178,12 +193,12 @@ void caminho()
 void caminho2()
 {
     glPushMatrix();
-    glTranslatef(0.0f, 0.0f, -50.0f); //Move para o final do caminho 1
+    glTranslatef(0.0, 0.0, -50.0); //Move para o final do caminho 1
     glColor3f(0.7, 0.6, 0.4);
 
-    float tam_x = 100.0;
+    float tam_x = 200.0;
     float tam_z = 15.0;
-    float aux = 0.01;
+    float aux = 0.02;
 
     glBegin(GL_QUADS);
     glVertex3f(-tam_x, aux, -tam_z);
@@ -198,9 +213,9 @@ void caminho2()
 void paredesHorizonte()
 {
     glColor3f(0.0, 0.6, 1.0);
-    float tam_X = 100.0;
-    float tam_y = 100.0;
-    float tam_Z = 100.0;
+    float tam_X = 200.0;
+    float tam_y = 200.0;
+    float tam_Z = 200.0;
 
     glBegin(GL_QUADS);
     //Fundo
@@ -240,12 +255,26 @@ void paredesHorizonte()
     glEnd();
 }
 
-void bolaDeFeno_e_NaoDePoeira()
+void bolaDeFeno()
 {
+    float p0[3] = {-90.0, 0.0, -50.0};
+    float p1[3] = {-30.0, 0.0, -55.0};
+    float p2[3] = {30.0, 0.0, -45.0};
+    float p3[3] = {90.0, 0.0, -50.0};
+
+    float pos[3];
+
+    bezierFeno(t_bola, p0, p1, p2, p3, pos);
+
+    //Efeito de "quique"
+    float freq_salto = 40;
+    float altura_Salto = 1.2;
+    float altura = fabs(sin(t_bola * freq_salto)) * altura_Salto; //fabs retorna valor absoluto
+
     glPushMatrix();
-    glTranslatef(8.0, 1.0, -45.0);
+    glTranslatef(pos[0], 1.0 + altura, pos[2]);
     glColor3f(0.8, 0.9, 0.3);
-    glutSolidSphere(1.2, 20.0, 20.0);
+    glutSolidSphere(1.2, 20, 20);
     glPopMatrix();
 }
 
@@ -267,57 +296,96 @@ void desenhaModeloInstancia(float x, float y, float z, Modelo3D *modelo, float a
 
 //====================CIDADE====================
 void cidade(Modelo3D *carruagem, Modelo3D *saloon, Modelo3D *casa1, Modelo3D *casa2, Modelo3D *general_store,
-            Modelo3D *guns_store, Modelo3D *hotel, Modelo3D *bank, Modelo3D *sheriff)
+            Modelo3D *guns_store, Modelo3D *hotel, Modelo3D *bank, Modelo3D *sheriff, Modelo3D *casa_grande,
+            Modelo3D *water_tank, Modelo3D *welcome_placa, Modelo3D *Windmill, Modelo3D *cactus_a, Modelo3D *cactus_b,
+            Modelo3D *cactus_c, Modelo3D *cactus_d, Modelo3D *barrel_a, Modelo3D *barrel_b, Modelo3D *dynamite_b,
+            Modelo3D *lantern)
 {
+    float aux = 0.01;
     chao();
     caminho();
     caminho2();
     paredesHorizonte();
-    bolaDeFeno_e_NaoDePoeira();
+    bolaDeFeno();
 
-    desenhaModeloInstancia(5.0, 0.01, 40.0, carruagem, 0.0, 2.2, 2.2, 2.2);
+    
+
+    //AMBIENTACAO
+    desenhaModeloInstancia(5.0, aux, 40.0, carruagem, 0.0, 2.2, 2.2, 2.2);
+    desenhaModeloInstancia(0.0, aux, 110.0, welcome_placa, -90.0, 5.0, 5.0, 5.0);
+    desenhaModeloInstancia(100.0, aux, 150.0, cactus_b, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(-120.0, aux, -70.0, cactus_a, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(20.0, aux, 120.0, cactus_c, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(-60.0, aux, 80.0, cactus_c, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(-70.0, aux, 90.0, cactus_d, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(-82.0, aux, 110.0, cactus_a, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(13.0, aux, 60.0, barrel_a, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(13.0, aux, 55.0, barrel_b, 90.0, 4.0, 6.0, 4.0);
+    desenhaModeloInstancia(-50.0, aux, -90.0, dynamite_b, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(-47.0, aux, -90.0, dynamite_b, 90.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(-15.0, aux, 112.0, lantern, 120.0, 3.0, 3.0, 3.0);
+    //====================CACTOS FORA DA CIDADE====================
+
+//Lado esquerdo (bem afastado)
+    desenhaModeloInstancia(-140.0, aux, 140.0, cactus_a, 0.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(-160.0, aux, 60.0, cactus_b, 0.0, 3.5, 3.5, 3.5);
+    desenhaModeloInstancia(-130.0, aux, -20.0, cactus_c, 0.0, 2.8, 2.8, 2.8);
+    desenhaModeloInstancia(-170.0, aux, -100.0, cactus_d, 0.0, 3.2, 3.2, 3.2);
+
+    //Lado direito (bem afastado)
+    desenhaModeloInstancia(140.0, aux, 130.0, cactus_b, 0.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(165.0, aux, 40.0, cactus_c, 0.0, 3.5, 3.5, 3.5);
+    desenhaModeloInstancia(135.0, aux, -40.0, cactus_a, 0.0, 2.5, 2.5, 2.5);
+
+    //Frente (antes da cidade)
+    desenhaModeloInstancia(-100.0, aux, -170.0, cactus_d, 0.0, 3.0, 3.0, 3.0);
+    desenhaModeloInstancia(100.0, aux, -180.0, cactus_a, 0.0, 3.0, 3.0, 3.0);
 
     //DE FRENTE AO SALOON
-    desenhaModeloInstancia(-57.0, 0.01, -34.0, hotel, 90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-57.0, aux, -34.0, hotel, 90.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(-85.0, 0.01, -32.0, casa1, 90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-85.0, aux, -32.0, casa1, 90.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(58.0, 0.01, -34.0, casa2, 90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(58.0, aux, -34.0, casa2, 90.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(88.0, 0.01, -33.0, casa1, 90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(88.0, aux, -33.0, casa1, 90.0, 4.0, 4.0, 4.0);
 
     //AO LADO DO SALOON/DE FRENTRE PARA A RUA PRINCIPAL
-    desenhaModeloInstancia(0.0, 0.01, -75.0, saloon, -90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(0.0, aux, -75.0, saloon, -90.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(45.0, 0.01, -70.0, hotel, -90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(45.0, aux, -70.0, casa_grande, -90.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(75.0, 0.01, -70.0, casa1, -90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(75.0, aux, -70.0, casa1, -90.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(-45.0, 0.01, -70.0, bank, -90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-45.0, aux, -70.0, bank, -90.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(-78.0, 0.01, -70.0, sheriff, -90.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-78.0, aux, -70.0, sheriff, -90.0, 4.0, 4.0, 4.0);
 
     //DIREITA DA RUA PRINCIPAL
-    desenhaModeloInstancia(20.0, 0.01, 85.0, casa1, 180.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(20.0, aux, 85.0, casa1, 180.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(20.0, 0.01, 57.5, casa2, 180.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(20.0, aux, 57.5, casa2, 180.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(20.0, 0.01, 29.0, general_store, 180.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(20.0, aux, 29.0, general_store, 180.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(20.0, 0.01, 0.5, guns_store, 180.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(20.0, aux, 0.5, guns_store, 180.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(20.0, 0.01, -27.5, casa1, 180.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(20.0, aux, -27.5, casa1, 180.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(60.0, aux, 50.0, Windmill, 90.0, 5.0, 5.0, 5.0);
 
     //ESQUERDA DA RUA PRINCIPAL
-    desenhaModeloInstancia(-20.0, 0.01, 85.0, casa1, 0.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-20.0, aux, 85.0, casa1, 0.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(-20.0, 0.01, 57.5, casa2, 0.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-60.0, aux, 57.5, water_tank, 90.0, 5.0, 5.0, 5.0);
 
-    desenhaModeloInstancia(-20.0, 0.01, 29.0, casa1, 0.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-20.0, aux, 57.5, casa2, 0.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(-20.0, 0.01, 0.5, casa1, 0.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-20.0, aux, 29.0, casa1, 0.0, 4.0, 4.0, 4.0);
 
-    desenhaModeloInstancia(-20.0, 0.01, -27.5, casa2, 0.0, 4.0, 4.0, 4.0);
+    desenhaModeloInstancia(-20.0, aux, 0.5, casa1, 0.0, 4.0, 4.0, 4.0);
+
+    desenhaModeloInstancia(-20.0, aux, -27.5, casa2, 0.0, 4.0, 4.0, 4.0);
 }
 //====================FUNCOES GLUT====================
 void init()
@@ -349,9 +417,22 @@ void display()
     extern Modelo3D casa1;
     extern Modelo3D casa2;
     extern Modelo3D casa_grande;
+    extern Modelo3D water_tank;
+    extern Modelo3D welcome_placa;
+    extern Modelo3D Windmill;
+    extern Modelo3D cactus_a;
+    extern Modelo3D cactus_b;
+    extern Modelo3D cactus_c;
+    extern Modelo3D cactus_d;
+    extern Modelo3D barrel_a;
+    extern Modelo3D barrel_b;
+    extern Modelo3D dynamite_b;
+    extern Modelo3D lantern;
 
     //Aqui na display basta chamar cidade(), todos os objetos sao instanciados la
-    cidade(&carruagem, &saloon, &casa1, &casa2, &general_store, &guns_store, &hotel, &bank, &sheriff);
+    cidade(&carruagem, &saloon, &casa1, &casa2, &general_store, &guns_store, &hotel, &bank, &sheriff, &casa_grande,
+           &water_tank, &welcome_placa, &Windmill, &cactus_a, &cactus_b, &cactus_c, &cactus_d, &barrel_a,
+           &barrel_b, &dynamite_b, &lantern);
 
     glutSwapBuffers();
 }
@@ -361,7 +442,7 @@ void reshape(int w, int h)
     glViewport(0, 0, (GLsizei)w, (GLsizei)h);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(60.0, (GLfloat)w / (GLfloat)h, 0.1, 400.0);
+    gluPerspective(60.0, (GLfloat)w / (GLfloat)h, 0.1, 800.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 }
@@ -410,6 +491,12 @@ void keyboard(unsigned char key, int x, int y)
 
 void velAnimacao(int value)
 {
+    t_bola += 0.005;
+
+    if (t_bola > 1.0){
+        t_bola = 0.0;
+    }
+
     glutPostRedisplay();
     glutTimerFunc(16, velAnimacao, 0);
 }
@@ -427,15 +514,19 @@ Modelo3D bank;
 Modelo3D casa1;
 Modelo3D casa2;
 Modelo3D casa_grande;
+Modelo3D water_tank;
+Modelo3D welcome_placa;
+Modelo3D Windmill;
+Modelo3D cactus_a;
+Modelo3D cactus_b;
+Modelo3D cactus_c;
+Modelo3D cactus_d;
+Modelo3D barrel_a;
+Modelo3D barrel_b;
+Modelo3D dynamite_b;
+Modelo3D lantern;
 
-int main(int argc, char **argv)
-{
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutInitWindowSize(largura, altura);
-    glutCreateWindow(argv[0]);
-    init();
-
+void carregaModelos(){
     //Modelos devem ser carregados aqui
     carregaObjModelo(&carruagem, "My_stagecoach.obj");
     carregaObjModelo(&saloon, "saloon.obj");
@@ -447,6 +538,16 @@ int main(int argc, char **argv)
     carregaObjModelo(&casa1, "casa1.obj");
     carregaObjModelo(&casa2, "casa2.obj");
     carregaObjModelo(&casa_grande, "casa_grande.obj");
+    carregaObjModelo(&water_tank, "water_tank.obj");
+    carregaObjModelo(&welcome_placa, "welcome_placa.obj");
+    carregaObjModelo(&Windmill, "Windmill.obj");
+    carregaObjModelo(&cactus_a, "Cactus A.obj");
+    carregaObjModelo(&cactus_b, "Cactus B.obj");
+    carregaObjModelo(&cactus_c, "Cactus C.obj");
+    carregaObjModelo(&barrel_a, "Barrel A.obj");
+    carregaObjModelo(&barrel_b, "Barrel B.obj");
+    carregaObjModelo(&dynamite_b, "Dynamite B.obj");
+    carregaObjModelo(&lantern, "Lantern.obj");
 
     //Display list armazena o modelo já compilado pelo OpenGL (evita recalcular vértices a cada frame)
     //Melhora desempenho -> substitui várias chamadas glVertex/glNormal por um único glCallList()
@@ -461,7 +562,28 @@ int main(int argc, char **argv)
     criaDisplayListModelo(&casa1);
     criaDisplayListModelo(&casa2);
     criaDisplayListModelo(&casa_grande);
+    criaDisplayListModelo(&water_tank);
+    criaDisplayListModelo(&welcome_placa);
+    criaDisplayListModelo(&Windmill);
+    criaDisplayListModelo(&cactus_a);
+    criaDisplayListModelo(&cactus_b);
+    criaDisplayListModelo(&cactus_c);
+    criaDisplayListModelo(&cactus_d);
+    criaDisplayListModelo(&barrel_a);
+    criaDisplayListModelo(&barrel_b);
+    criaDisplayListModelo(&dynamite_b);
+    criaDisplayListModelo(&lantern);
 
+}
+
+int main(int argc, char **argv)
+{
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(largura, altura);
+    glutCreateWindow(argv[0]);
+    init();
+    carregaModelos();
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
