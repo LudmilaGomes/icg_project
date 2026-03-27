@@ -4,8 +4,14 @@
 #include <math.h>
 #define TINYOBJ_LOADER_C_IMPLEMENTATION
 #include "tinyobj_loader_c.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #include <GL/glut.h>
 
+GLuint tex_chao;
+GLuint tex_caminho;
+GLuint tex_ceu;
+GLuint tex_feno;
 int largura = 1280;
 int altura = 720;
 float pos_x = 0.0;
@@ -126,6 +132,11 @@ void renderizaModelo(Modelo3D *modelo)
                 glColor3f(modelo->materials[matid].diffuse[0],
                           modelo->materials[matid].diffuse[1],
                           modelo->materials[matid].diffuse[2]);
+
+                glMaterialfv(GL_FRONT, GL_AMBIENT, modelo->materials[matid].ambient);
+                glMaterialfv(GL_FRONT, GL_DIFFUSE, modelo->materials[matid].diffuse);
+                glMaterialfv(GL_FRONT, GL_SPECULAR, modelo->materials[matid].specular);
+                glMaterialf(GL_FRONT, GL_SHININESS, modelo->materials[matid].shininess);
             }
 
             for (size_t v = 0; v < 3; v++)
@@ -151,6 +162,48 @@ void renderizaModelo(Modelo3D *modelo)
     }
 }
 
+GLuint loadTexture(const char *filename)
+{
+  int width, height, nrChannels;
+  unsigned char *data = stbi_load(filename, &width, &height,
+                                  &nrChannels, 0);
+  if (data)
+  {
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    // Set texture wrapping and filtering parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+                    GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+                    GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                    GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                    GL_LINEAR);
+    // Load the texture data ( check if it 's RGB or RGBA )
+    if (nrChannels == 3)
+    {
+      gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGB, width,
+                        height, GL_RGB, GL_UNSIGNED_BYTE, data);
+    }
+    else if (nrChannels == 4)
+    {
+      gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, width,
+                        height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    }
+    stbi_image_free(data);
+
+    return texture;
+  }
+  else
+  {
+    printf("Failed to load texture.\n");
+    return -1;
+  }
+}
+
 //====================CRIA DISPLAY LIST====================
 void criaDisplayListModelo(Modelo3D *modelo)
 {
@@ -166,12 +219,21 @@ void criaDisplayListModelo(Modelo3D *modelo)
 void chao()
 {
     glColor3f(0.8, 0.7, 0.5);
+    glBindTexture(GL_TEXTURE_2D, tex_chao);
     float tam_x = 200.0;
     float tam_z = 200.0;
     glBegin(GL_QUADS);
+    glNormal3f(0.0, 1.0, 0.0);
+    glTexCoord2f(0.0, 0.0);
     glVertex3f(-tam_x, 0.0, -tam_z);
+
+    glTexCoord2f(0.0, 1.0);
     glVertex3f(-tam_x, 0.0, tam_z);
+
+    glTexCoord2f(1.0, 1.0);
     glVertex3f(tam_x, 0.0, tam_z);
+
+    glTexCoord2f(1.0, 0.0);
     glVertex3f(tam_x, 0.0, -tam_z);
     glEnd();
 }
@@ -179,13 +241,20 @@ void chao()
 void caminho()
 {
     glColor3f(0.7, 0.6, 0.4);
+    glBindTexture(GL_TEXTURE_2D, tex_caminho);
     float tam_x = 15.0;   //Largura
     float tam_z = 150.0;   //Comprimento
     float aux = 0.01;
+
     glBegin(GL_QUADS);
+    glNormal3f(0.0, 1.0, 0.0);
+    glTexCoord2f(0.0, 0.0);
     glVertex3f(-tam_x, aux, -tam_z);
+    glTexCoord2f(0.0, 5.0);
     glVertex3f(-tam_x, aux, tam_z + 50.0);
+    glTexCoord2f(1.0, 5.0);
     glVertex3f(tam_x, aux, tam_z + 50.0);
+    glTexCoord2f(1.0, 0.0);
     glVertex3f(tam_x, aux, -tam_z);
     glEnd();
 }
@@ -194,6 +263,7 @@ void caminho2()
 {
     glPushMatrix();
     glTranslatef(0.0, 0.0, -50.0); //Move para o final do caminho 1
+    glBindTexture(GL_TEXTURE_2D, tex_caminho);
     glColor3f(0.7, 0.6, 0.4);
 
     float tam_x = 200.0;
@@ -201,9 +271,14 @@ void caminho2()
     float aux = 0.02;
 
     glBegin(GL_QUADS);
+    glNormal3f(0.0, 1.0, 0.0);
+    glTexCoord2f(0.0, 0.0);
     glVertex3f(-tam_x, aux, -tam_z);
+    glTexCoord2f(0.0, 2.0);
     glVertex3f(-tam_x, aux, tam_z);
+    glTexCoord2f(20.0, 2.0);
     glVertex3f(tam_x, aux, tam_z);
+    glTexCoord2f(20.0, 0.0);
     glVertex3f(tam_x, aux, -tam_z);
     glEnd();
 
@@ -212,7 +287,8 @@ void caminho2()
 
 void paredesHorizonte()
 {
-    glColor3f(0.0, 0.6, 1.0);
+    // glColor3f(0.0, 0.6, 1.0);
+    glBindTexture(GL_TEXTURE_2D, tex_ceu);
     float tam_X = 200.0;
     float tam_y = 200.0;
     float tam_Z = 200.0;
@@ -220,37 +296,58 @@ void paredesHorizonte()
     glBegin(GL_QUADS);
     //Fundo
     glNormal3f(0.0, 0.0, 1.0); //Normal apontando para frente
+    glTexCoord2f(0.0, 1.0);
     glVertex3f(-tam_X, 0.0, -tam_Z);
+    glTexCoord2f(1.0, 1.0);
     glVertex3f(tam_X, 0.0, -tam_Z);
+    glTexCoord2f(1.0, 0.0);
     glVertex3f(tam_X, tam_y, -tam_Z);
+    glTexCoord2f(0.0, 0.0);
     glVertex3f(-tam_X, tam_y, -tam_Z);
 
     //Frente
     glNormal3f(0.0, 0.0, -1.0); //Normal apontando para trás
+    glTexCoord2f(0.0, 0.0);
     glVertex3f(-tam_X, 0.0, tam_Z);
+    glTexCoord2f(0.0, 0.5);
     glVertex3f(-tam_X, tam_y, tam_Z);
+    glTexCoord2f(0.5, 0.5);
     glVertex3f(tam_X, tam_y, tam_Z);
+    glTexCoord2f(0.5, 0.0);
     glVertex3f(tam_X, 0.0, tam_Z);
 
     //Esquerda
     glNormal3f(1.0, 0.0, 0.0); //Normal apontando para direita
+
+    glTexCoord2f(0.7, 0.7);
     glVertex3f(-tam_X, 0.0, -tam_Z);
+    glTexCoord2f(0.7, 0.0);
     glVertex3f(-tam_X, tam_y, -tam_Z);
+    glTexCoord2f(0.0, 0.0);
     glVertex3f(-tam_X, tam_y, tam_Z);
+    glTexCoord2f(0.0, 0.7);
     glVertex3f(-tam_X, 0.0, tam_Z);
 
     //Direita
     glNormal3f(-1.0, 0.0, 0.0); //Normal apontando para esquerda
+    glTexCoord2f(0.7, 0.7);
     glVertex3f(tam_X, 0.0, -tam_Z);
+    glTexCoord2f(0.0, 0.7);
     glVertex3f(tam_X, 0.0, tam_Z);
+    glTexCoord2f(0.0, 0.0);
     glVertex3f(tam_X, tam_y, tam_Z);
+    glTexCoord2f(0.7, 0.0);
     glVertex3f(tam_X, tam_y, -tam_Z);
 
     //Teto
     glNormal3f(0.0, 1.0, 0.0); //Normal apontando para cima
+    glTexCoord2f(0.0, 0.0);
     glVertex3f(-tam_X, tam_y, -tam_Z);
+    glTexCoord2f(0.20, 0.0);
     glVertex3f(tam_X, tam_y, -tam_Z);
+    glTexCoord2f(0.20, 0.20);
     glVertex3f(tam_X, tam_y, tam_Z);
+    glTexCoord2f(0.0, 0.20);
     glVertex3f(-tam_X, tam_y, tam_Z);
     glEnd();
 }
@@ -273,8 +370,11 @@ void bolaDeFeno()
 
     glPushMatrix();
     glTranslatef(pos[0], 1.0 + altura, pos[2]);
-    glColor3f(0.8, 0.9, 0.3);
-    glutSolidSphere(1.2, 20, 20);
+    // glColor3f(0.8, 0.9, 0.3);
+    glBindTexture(GL_TEXTURE_2D, tex_feno);
+    GLUquadric* quad = gluNewQuadric();
+    gluQuadricTexture(quad, GL_TRUE);
+    gluSphere (quad, 1.2, 20, 20);
     glPopMatrix();
 }
 
@@ -319,8 +419,8 @@ void cidade(Modelo3D *carruagem, Modelo3D *saloon, Modelo3D *casa1, Modelo3D *ca
     desenhaModeloInstancia(-60.0, aux, 80.0, cactus_c, 90.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(-70.0, aux, 90.0, cactus_d, 90.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(-82.0, aux, 110.0, cactus_a, 90.0, 3.0, 3.0, 3.0);
-    desenhaModeloInstancia(13.0, aux, 60.0, barrel_a, 90.0, 3.0, 3.0, 3.0);
-    desenhaModeloInstancia(13.0, aux, 55.0, barrel_b, 90.0, 4.0, 6.0, 4.0);
+    desenhaModeloInstancia(13.0, aux, 60.0, barrel_a, 90.0, 3.0, 8.0, 3.0);
+    desenhaModeloInstancia(13.0, aux, 55.0, barrel_b, 90.0, 4.0, 8.0, 4.0);
     desenhaModeloInstancia(-50.0, aux, -90.0, dynamite_b, 90.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(-47.0, aux, -90.0, dynamite_b, 90.0, 3.0, 3.0, 3.0);
     desenhaModeloInstancia(-15.0, aux, 112.0, lantern, 120.0, 3.0, 3.0, 3.0);
@@ -389,6 +489,18 @@ void cidade(Modelo3D *carruagem, Modelo3D *saloon, Modelo3D *casa1, Modelo3D *ca
 //====================FUNCOES GLUT====================
 void init()
 {
+    GLfloat light0_ambient[] = {0.1, 0.1, 0.1, 1.0};
+    GLfloat light0_diffuse[] = {1.0, 0.97, 0.85, 1.0};
+    GLfloat light0_specular[] = {1.0, 1.0, 1.0, 1.0};
+    glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, light0_specular);
+    glEnable(GL_TEXTURE_2D);
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    glEnable(GL_NORMALIZE);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -404,6 +516,9 @@ void display()
     dir_x = sin(yaw);
     dir_z = -cos(yaw);
     gluLookAt(pos_x, pos_y, pos_z, pos_x + dir_x, pos_y + dir_y, pos_z + dir_z, 0.0, 1.0, 0.0);
+    
+    GLfloat light0_position[] = {1.0, 1.0, 1.0, 0.0};
+    glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
     //Esses extern Modelo3D sao necessarios para poder passa-los como parametros
     extern Modelo3D carruagem;
@@ -490,7 +605,7 @@ void keyboard(unsigned char key, int x, int y)
 
 void velAnimacao(int value)
 {
-    t_bola += 0.005;
+    t_bola += 0.002;
 
     if (t_bola > 1.0){
         t_bola = 0.0;
@@ -527,26 +642,26 @@ Modelo3D lantern;
 
 void carregaModelos(){
     //Modelos devem ser carregados aqui
-    carregaObjModelo(&carruagem, "My_stagecoach.obj");
-    carregaObjModelo(&saloon, "saloon.obj");
-    carregaObjModelo(&hotel, "hotel.obj");
-    carregaObjModelo(&guns_store, "guns_store.obj");
-    carregaObjModelo(&general_store, "general_store.obj");
-    carregaObjModelo(&sheriff, "sheriff.obj");
-    carregaObjModelo(&bank, "bank.obj");
-    carregaObjModelo(&casa1, "casa1.obj");
-    carregaObjModelo(&casa2, "casa2.obj");
-    carregaObjModelo(&casa_grande, "casa_grande.obj");
-    carregaObjModelo(&water_tank, "water_tank.obj");
-    carregaObjModelo(&welcome_placa, "welcome_placa.obj");
-    carregaObjModelo(&Windmill, "Windmill.obj");
-    carregaObjModelo(&cactus_a, "Cactus A.obj");
-    carregaObjModelo(&cactus_b, "Cactus B.obj");
-    carregaObjModelo(&cactus_c, "Cactus C.obj");
-    carregaObjModelo(&barrel_a, "Barrel A.obj");
-    carregaObjModelo(&barrel_b, "Barrel B.obj");
-    carregaObjModelo(&dynamite_b, "Dynamite B.obj");
-    carregaObjModelo(&lantern, "Lantern.obj");
+    carregaObjModelo(&carruagem, "predios/Stagecoach.obj");
+    carregaObjModelo(&saloon, "predios/saloon.obj");
+    carregaObjModelo(&hotel, "predios/hotel.obj");
+    carregaObjModelo(&guns_store, "predios/guns_store.obj");
+    carregaObjModelo(&general_store, "predios/general_store.obj");
+    carregaObjModelo(&sheriff, "predios/sheriff.obj");
+    carregaObjModelo(&bank, "predios/bank.obj");
+    carregaObjModelo(&casa1, "predios/casa1.obj");
+    carregaObjModelo(&casa2, "predios/casa2.obj");
+    carregaObjModelo(&casa_grande, "predios/casa_grande.obj");
+    carregaObjModelo(&water_tank, "predios/Water Tank.obj");
+    carregaObjModelo(&welcome_placa, "predios/welcome_placa.obj");
+    carregaObjModelo(&Windmill, "predios/Windmill.obj");
+    carregaObjModelo(&cactus_a, "predios/Cactus A.obj");
+    carregaObjModelo(&cactus_b, "predios/Cactus B.obj");
+    carregaObjModelo(&cactus_c, "predios/Cactus C.obj");
+    carregaObjModelo(&barrel_a, "predios/Barrel A.obj");
+    carregaObjModelo(&barrel_b, "predios/Barrel B.obj");
+    carregaObjModelo(&dynamite_b, "predios/Dynamite B.obj");
+    carregaObjModelo(&lantern, "predios/Lantern.obj");
 
     //Display list armazena o modelo já compilado pelo OpenGL (evita recalcular vértices a cada frame)
     //Melhora desempenho -> substitui várias chamadas glVertex/glNormal por um único glCallList()
@@ -573,6 +688,22 @@ void carregaModelos(){
     criaDisplayListModelo(&dynamite_b);
     criaDisplayListModelo(&lantern);
 
+    //Carrega texturas
+    tex_chao = loadTexture("./texturas/terra_chao.png");
+    if(tex_chao == -1)
+        printf("Nao foi possivel carregar texturad o chao.\n");
+
+    tex_caminho = loadTexture("./texturas/terra_caminho.png");
+    if(tex_caminho == -1)
+        printf("Nao foi possivel carregar texturad o caminho.\n");
+
+    tex_ceu = loadTexture("./texturas/ceu_entardecer.png");
+    if(tex_ceu == -1)
+        printf("Nao foi possivel carregar texturad o ceu.\n");
+
+    tex_feno = loadTexture("./texturas/feno.png");
+    if(tex_feno == -1)
+        printf("Nao foi possivel carregar texturad o ceu.\n");
 }
 
 int main(int argc, char **argv)
