@@ -516,6 +516,15 @@ void display()
     dir_x = sin(yaw);
     dir_z = -cos(yaw);
     gluLookAt(pos_x, pos_y, pos_z, pos_x + dir_x, pos_y + dir_y, pos_z + dir_z, 0.0, 1.0, 0.0);
+
+    if ((pos_x <= 20 && pos_x >= -20) && ((pos_z <= -65 && pos_z >= -98)))
+    {
+        pos_y = 7.0;
+    }
+    else
+    {
+        pos_y = 4.0;
+    }
     
     GLfloat light0_position[] = {1.0, 1.0, 1.0, 0.0};
     glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
@@ -643,7 +652,7 @@ Modelo3D lantern;
 void carregaModelos(){
     //Modelos devem ser carregados aqui
     carregaObjModelo(&carruagem, "predios/Stagecoach.obj");
-    carregaObjModelo(&saloon, "predios/saloon.obj");
+    carregaObjModelo(&saloon, "predios/saloon_final.obj");
     carregaObjModelo(&hotel, "predios/hotel.obj");
     carregaObjModelo(&guns_store, "predios/guns_store.obj");
     carregaObjModelo(&general_store, "predios/general_store.obj");
