@@ -23,18 +23,20 @@ float dir_y = 0.0;
 float dir_z = -1.0;
 float t_bola = 0.0;
 
+//Calculo da spline de bezier para trajetoria da bola de feno
 void bezierFeno(float t, float *p0, float *p1, float *p2, float *p3, float *pos)
 {
     float u = 1.0 - t;
 
+    //Formulas para calculo da spline de bezier
     float b0 = pow(u, 3);
     float b1 = 3 * pow(u, 2) * t;
     float b2 = 3 * u * pow(t, 2);
     float b3 = pow(t, 3);
 
-    pos[0] = b0*p0[0] + b1*p1[0] + b2*p2[0] + b3*p3[0];
-    pos[1] = b0*p0[1] + b1*p1[1] + b2*p2[1] + b3*p3[1];
-    pos[2] = b0*p0[2] + b1*p1[2] + b2*p2[2] + b3*p3[2];
+    pos[0] = b0*p0[0] + b1*p1[0] + b2*p2[0] + b3*p3[0]; //Coordenada x
+    pos[1] = b0*p0[1] + b1*p1[1] + b2*p2[1] + b3*p3[1]; //Coordenada y
+    pos[2] = b0*p0[2] + b1*p1[2] + b2*p2[2] + b3*p3[2]; //Coordenada z
 }
 
 //====================ESTRUTURA PARA MODELOS====================
@@ -74,6 +76,7 @@ static void file_reader(void *ctx, const char *filename, int is_mtl, const char 
     fclose(f);
 }
 
+//Carrega as partes do modelo 3D importado
 int carregaObjModelo(Modelo3D *modelo, const char *caminho_obj)
 {
     modelo->attrib.vertices = NULL;
@@ -113,7 +116,7 @@ int carregaObjModelo(Modelo3D *modelo, const char *caminho_obj)
     }
 }
 
-//====================RENDERIZA MODELO====================
+//Constroi/renderiza o modelo de fato a partir de seus atributos carregados na funcao anterior
 void renderizaModelo(Modelo3D *modelo)
 {
     if (!modelo->pronto || modelo->attrib.material_ids == NULL)
@@ -162,6 +165,7 @@ void renderizaModelo(Modelo3D *modelo)
     }
 }
 
+//Funcao para carregar as texturas 
 GLuint loadTexture(const char *filename)
 {
   int width, height, nrChannels;
@@ -205,6 +209,10 @@ GLuint loadTexture(const char *filename)
 }
 
 //====================CRIA DISPLAY LIST====================
+//Grava o objeto ja renderizado na memoria do OpenGL, permitindo sua reutilizacao
+//Em vez de recalcular vertices, normais e faces a cada frame, o modelo permanece pronto na memoria
+//Assim, basta chama-lo sempre que necessario, o que melhora o desempenho da renderizacao
+//Alem disso, permite criar multiplas instancias do mesmo objeto em diferentes posicoes da cena
 void criaDisplayListModelo(Modelo3D *modelo)
 {
     if (!modelo->pronto) return;
@@ -243,7 +251,7 @@ void caminho()
     glColor3f(0.7, 0.6, 0.4);
     glBindTexture(GL_TEXTURE_2D, tex_caminho);
     float tam_x = 15.0;   //Largura
-    float tam_z = 150.0;   //Comprimento
+    float tam_z = 150.0;  //Comprimento
     float aux = 0.01;
 
     glBegin(GL_QUADS);
@@ -287,7 +295,7 @@ void caminho2()
 
 void paredesHorizonte()
 {
-    // glColor3f(0.0, 0.6, 1.0);
+    //glColor3f(0.0, 0.6, 1.0);
     glBindTexture(GL_TEXTURE_2D, tex_ceu);
     float tam_X = 200.0;
     float tam_y = 200.0;
@@ -354,6 +362,7 @@ void paredesHorizonte()
 
 void bolaDeFeno()
 {
+    //Pontos de controle para spline de bezier
     float p0[3] = {-90.0, 0.0, -50.0};
     float p1[3] = {-30.0, 0.0, -55.0};
     float p2[3] = {30.0, 0.0, -45.0};
@@ -366,11 +375,13 @@ void bolaDeFeno()
     //Efeito de "quique"
     float freq_salto = 40;
     float altura_Salto = 1.2;
-    float altura = fabs(sin(t_bola * freq_salto)) * altura_Salto; //fabs retorna valor absoluto
+    //Descreve um movimento senoidal para dar o efeito de "quique" para a bola
+    //fabs garante que seja retornado apenas o valor absoluto, evitando que a bola atravesse o solo
+    float altura = fabs(sin(t_bola * freq_salto)) * altura_Salto;
 
     glPushMatrix();
-    glTranslatef(pos[0], 1.0 + altura, pos[2]);
-    // glColor3f(0.8, 0.9, 0.3);
+    glTranslatef(pos[0], 1.0 + altura, pos[2]); //Atualiza a posicao da bola na cena a partir dos valores calculados
+    //glColor3f(0.8, 0.9, 0.3);
     glBindTexture(GL_TEXTURE_2D, tex_feno);
     GLUquadric* quad = gluNewQuadric();
     gluQuadricTexture(quad, GL_TRUE);
@@ -379,7 +390,8 @@ void bolaDeFeno()
 }
 
 //Funcao usada para desenhar os objetos, sendo necessario passar a posicao no mundo, o modelo a ser construido
-//Sua angulacao e componentes da escala
+//sua angulacao e componentes da escala
+//O modelo deve estar carregado e pronto na memoria para poder ser utilizado
 void desenhaModeloInstancia(float x, float y, float z, Modelo3D *modelo, float angulo_y, float sx, float sy, float sz)
 {
     if (!modelo->pronto || modelo->displayList == 0){
@@ -401,14 +413,14 @@ void cidade(Modelo3D *carruagem, Modelo3D *saloon, Modelo3D *casa1, Modelo3D *ca
             Modelo3D *cactus_c, Modelo3D *cactus_d, Modelo3D *barrel_a, Modelo3D *barrel_b, Modelo3D *dynamite_b,
             Modelo3D *lantern)
 {
-    float aux = 0.01;
+    float aux = 0.01; //Usado para evitar z-fighting
+
+    //OBJETOS CONSTRUIDOS COM FUNCOES DO PROPRIO OPENGL
     chao();
     caminho();
     caminho2();
     paredesHorizonte();
     bolaDeFeno();
-
-    
 
     //AMBIENTACAO
     desenhaModeloInstancia(5.0, aux, 40.0, carruagem, 0.0, 2.2, 2.2, 2.2);
@@ -442,50 +454,34 @@ void cidade(Modelo3D *carruagem, Modelo3D *saloon, Modelo3D *casa1, Modelo3D *ca
 
     //DE FRENTE AO SALOON
     desenhaModeloInstancia(-57.0, aux, -34.0, hotel, 90.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(-85.0, aux, -32.0, casa1, 90.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(58.0, aux, -34.0, casa2, 90.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(88.0, aux, -33.0, casa1, 90.0, 4.0, 4.0, 4.0);
 
     //AO LADO DO SALOON/DE FRENTRE PARA A RUA PRINCIPAL
     desenhaModeloInstancia(0.0, aux, -75.0, saloon, -90.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(45.0, aux, -70.0, casa_grande, -90.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(75.0, aux, -70.0, casa1, -90.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(-45.0, aux, -70.0, bank, -90.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(-78.0, aux, -70.0, sheriff, -90.0, 4.0, 4.0, 4.0);
 
     //DIREITA DA RUA PRINCIPAL
     desenhaModeloInstancia(20.0, aux, 85.0, casa1, 180.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(20.0, aux, 57.5, casa2, 180.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(20.0, aux, 29.0, general_store, 180.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(20.0, aux, 0.5, guns_store, 180.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(20.0, aux, -27.5, casa1, 180.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(60.0, aux, 50.0, Windmill, 90.0, 5.0, 5.0, 5.0);
 
     //ESQUERDA DA RUA PRINCIPAL
     desenhaModeloInstancia(-20.0, aux, 85.0, casa1, 0.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(-60.0, aux, 57.5, water_tank, 90.0, 5.0, 5.0, 5.0);
-
     desenhaModeloInstancia(-20.0, aux, 57.5, casa2, 0.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(-20.0, aux, 29.0, casa1, 0.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(-20.0, aux, 0.5, casa1, 0.0, 4.0, 4.0, 4.0);
-
     desenhaModeloInstancia(-20.0, aux, -27.5, casa2, 0.0, 4.0, 4.0, 4.0);
 }
+
 //====================FUNCOES GLUT====================
 void init()
 {
@@ -512,11 +508,19 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    //Configuracoes para camera que nao fica presa olhando para a origem (mais proximo do que estamos acostumado em jogos)
-    dir_x = sin(yaw);
+    //Configuracoes para camera, a qual nao fica presa olhando para a origem
+    //O uso de seno e cosseno permitem retornar um valor que representa a direcao que esta sendo olhada
+    //Isso se baseia na variavel yaw, a qual e aumentada ou diminuida atraves das teclas Q e E
+    //Isso faz com que dir_x e dir_z variem entre -1 e 1 de modo que, por exemplo:
+    //Se yaw igual a 90, dir_x sera igual a 1 -> Olhando para a direita
+    //Enquanto dir_z será 0 -> nao ha deslocamento, entao esta olhando completamente para a direita
+    dir_x = sin(yaw); 
     dir_z = -cos(yaw);
+    //No lookat, o uso de posicao + direcao faz com que a camera olhe sempre
+    //para frente em relação a sua orientação atual, tornando o movimento mais fluido
     gluLookAt(pos_x, pos_y, pos_z, pos_x + dir_x, pos_y + dir_y, pos_z + dir_z, 0.0, 1.0, 0.0);
 
+    //If utilizado para ajustar a altura ao entrar no saloon, dando o efeito de que o mesmo tem física
     if ((pos_x <= 20 && pos_x >= -20) && ((pos_z <= -65 && pos_z >= -98)))
     {
         pos_y = 7.0;
@@ -529,7 +533,7 @@ void display()
     GLfloat light0_position[] = {1.0, 1.0, 1.0, 0.0};
     glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
 
-    //Esses extern Modelo3D sao necessarios para poder passa-los como parametros
+    //Esses extern Modelo3D sao necessarios para sua utilizacao como parametros na funcao cidade
     extern Modelo3D carruagem;
     extern Modelo3D saloon;
     extern Modelo3D hotel;
@@ -572,12 +576,14 @@ void reshape(int w, int h)
 
 void keyboard(unsigned char key, int x, int y)
 {
-    float vel = 1.0;
+    //Define a escala de deslocamento da camera ao se deslocar pelo ambiente
+    //Basicamente, a velocidade de movimento
+    float vel = 1.0; 
 
     switch (key)
     {
         case 'w':
-            pos_x += dir_x * vel;
+            pos_x += dir_x * vel; //Uso de dir garante que a camera se desloque na direcao que a camera esta olhando
             pos_z += dir_z * vel;
             break;
 
@@ -614,19 +620,17 @@ void keyboard(unsigned char key, int x, int y)
 
 void velAnimacao(int value)
 {
-    t_bola += 0.002;
+    t_bola += 0.002; //Ajusta a velocidade com a qual a bola de feno percorre a spline
 
     if (t_bola > 1.0){
-        t_bola = 0.0;
+        t_bola = 0.0; //Ao chegar no final da spline, reseta o movimento da bola
     }
 
     glutPostRedisplay();
     glutTimerFunc(16, velAnimacao, 0);
 }
 
-//====================MAIN====================
-
-//Necessário cria a variável aqui para carregar o modelo
+//Variáveis usadas para carregar os modelos
 Modelo3D carruagem;
 Modelo3D saloon;
 Modelo3D hotel;
@@ -650,7 +654,7 @@ Modelo3D dynamite_b;
 Modelo3D lantern;
 
 void carregaModelos(){
-    //Modelos devem ser carregados aqui
+    //Modelos sendo propriamente carregados a partir dos .obj
     carregaObjModelo(&carruagem, "predios/Stagecoach.obj");
     carregaObjModelo(&saloon, "predios/saloon_final.obj");
     carregaObjModelo(&hotel, "predios/hotel.obj");
@@ -672,9 +676,9 @@ void carregaModelos(){
     carregaObjModelo(&dynamite_b, "predios/Dynamite B.obj");
     carregaObjModelo(&lantern, "predios/Lantern.obj");
 
-    //Display list armazena o modelo já compilado pelo OpenGL (evita recalcular vértices a cada frame)
-    //Melhora desempenho -> substitui várias chamadas glVertex/glNormal por um único glCallList()
-    //Permite criar múltiplas instâncias de um mesmo modelo já carregado
+    //Display list armazena o modelo ja compilado pelo OpenGL (evita recalcular vertices a cada frame)
+    //Melhora desempenho -> substitui varias chamadas glVertex/glNormal por um unico glCallList()
+    //Permite criar multiplas instancias de um mesmo modelo ja carregado
     criaDisplayListModelo(&carruagem);
     criaDisplayListModelo(&saloon);
     criaDisplayListModelo(&hotel);
