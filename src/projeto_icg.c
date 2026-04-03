@@ -51,6 +51,8 @@ typedef struct {
 } Modelo3D;
 
 //====================CARREGA MODELO====================
+
+// Funcao para leitura de arquivos
 static void file_reader(void *ctx, const char *filename, int is_mtl, const char *obj_filename, char **buffer, size_t *len)
 {
     FILE *f = fopen(filename, "rb");
@@ -90,7 +92,6 @@ int carregaObjModelo(Modelo3D *modelo, const char *caminho_obj)
     modelo->attrib.face_num_verts = NULL;
     modelo->attrib.num_face_num_verts = 0;
     modelo->attrib.material_ids = NULL;
-
     modelo->shapes = NULL;
     modelo->num_shapes = 0;
     modelo->materials = NULL;
@@ -116,45 +117,58 @@ int carregaObjModelo(Modelo3D *modelo, const char *caminho_obj)
     }
 }
 
-//Constroi/renderiza o modelo de fato a partir de seus atributos carregados na funcao anterior
+//Constroi/renderiza o modelo a partir de seus atributos carregados na funcao anterior
 void renderizaModelo(Modelo3D *modelo)
 {
+    // verifica se modelo e material_ids foram carregados corretamente
     if (!modelo->pronto || modelo->attrib.material_ids == NULL)
         return;
 
+    // itera sobre cada shape
     for (size_t s = 0; s < modelo->num_shapes; s++)
     {
         glBegin(GL_TRIANGLES);
+        // itera sobre as faces do shape s atual
         for (size_t f = 0; f < modelo->shapes[s].length; f++)
         {
+            // salva o indice da face atual
             size_t global_face_id = modelo->shapes[s].face_offset + f;
+            // com o indice da face, salva o indice do material dessa face
             int matid = modelo->attrib.material_ids[global_face_id];
 
+            // verifica se o indice do material eh valido
             if (matid >= 0 && matid < modelo->num_materials)
             {
+                // define a cor da face atual com RGB da iluminacao difusa
                 glColor3f(modelo->materials[matid].diffuse[0],
                           modelo->materials[matid].diffuse[1],
                           modelo->materials[matid].diffuse[2]);
 
+                // define iluminacao da face atual
                 glMaterialfv(GL_FRONT, GL_AMBIENT, modelo->materials[matid].ambient);
                 glMaterialfv(GL_FRONT, GL_DIFFUSE, modelo->materials[matid].diffuse);
                 glMaterialfv(GL_FRONT, GL_SPECULAR, modelo->materials[matid].specular);
                 glMaterialf(GL_FRONT, GL_SHININESS, modelo->materials[matid].shininess);
             }
 
+            // agora percorre os 3 vertices da face atual (eh um triangulo)
             for (size_t v = 0; v < 3; v++)
             {
+                // armazena indice do vertice da face
                 size_t face_vertex_id = (modelo->shapes[s].face_offset + f) * 3 + v;
+                // id armazena os indices para acesso ao vetor normal e posicao
                 tinyobj_vertex_index_t id = modelo->attrib.faces[face_vertex_id];
 
                 if (id.vn_idx >= 0)
                 {
+                    // define vetor normal do vertice atual
                     glNormal3f(modelo->attrib.normals[3 * id.vn_idx + 0],
                                modelo->attrib.normals[3 * id.vn_idx + 1],
                                modelo->attrib.normals[3 * id.vn_idx + 2]);
                 }
                 if (id.v_idx >= 0)
                 {
+                    // define posicao do vertice atual
                     glVertex3f(modelo->attrib.vertices[3 * id.v_idx + 0],
                                modelo->attrib.vertices[3 * id.v_idx + 1],
                                modelo->attrib.vertices[3 * id.v_idx + 2]);
@@ -295,7 +309,6 @@ void caminho2()
 
 void paredesHorizonte()
 {
-    //glColor3f(0.0, 0.6, 1.0);
     glBindTexture(GL_TEXTURE_2D, tex_ceu);
     float tam_X = 200.0;
     float tam_y = 200.0;
@@ -381,7 +394,6 @@ void bolaDeFeno()
 
     glPushMatrix();
     glTranslatef(pos[0], 1.0 + altura, pos[2]); //Atualiza a posicao da bola na cena a partir dos valores calculados
-    //glColor3f(0.8, 0.9, 0.3);
     glBindTexture(GL_TEXTURE_2D, tex_feno);
     GLUquadric* quad = gluNewQuadric();
     gluQuadricTexture(quad, GL_TRUE);
@@ -485,16 +497,22 @@ void cidade(Modelo3D *carruagem, Modelo3D *saloon, Modelo3D *casa1, Modelo3D *ca
 //====================FUNCOES GLUT====================
 void init()
 {
+    // configuracoes de luz
     GLfloat light0_ambient[] = {0.1, 0.1, 0.1, 1.0};
     GLfloat light0_diffuse[] = {1.0, 0.97, 0.85, 1.0};
     GLfloat light0_specular[] = {1.0, 1.0, 1.0, 1.0};
+    // define configuracoes da fonte de luz 0
     glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, light0_specular);
+    // habilita uso de textura
     glEnable(GL_TEXTURE_2D);
+    // habilita cores do material para que aparecam ao mesmo tempo que iluminacao
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    // normaliza tamanho dos vetores normais, necessario apos uso do glScalef nos modelos
     glEnable(GL_NORMALIZE);
+    // habilita iluminação e fonte de luz 0
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
     glEnable(GL_DEPTH_TEST);
@@ -654,7 +672,7 @@ Modelo3D dynamite_b;
 Modelo3D lantern;
 
 void carregaModelos(){
-    //Modelos sendo propriamente carregados a partir dos .obj
+    //Modelos sao carregados a partir dos .obj
     carregaObjModelo(&carruagem, "predios/Stagecoach.obj");
     carregaObjModelo(&saloon, "predios/saloon_final.obj");
     carregaObjModelo(&hotel, "predios/hotel.obj");

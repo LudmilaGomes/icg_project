@@ -3,16 +3,22 @@
 ## Sumário
 
  - [Descrição](#descrição)
-    - O que o código faz
-    - Imagens do programa
  - [Instalação e Execução](#instalação-e-execução)
-    - Instruções de requisitos, como instalar, compilar e executar
- - [Problemas Encontrados](#problemas-encontrados)
+    - Instruções de requisitos, como instalar, compilar e executar;
+ - [Dificuldades Encontradas](#dificuldades-encontradas)
  - [Melhorias Futuras](#melhorias-futuras)
  - [Elementos das Atividades Práticas](#elementos-das-atividades-práticas)
  - [Trabalhos dos Integrantes](#trabalhos-dos-integrantes)
+ - [Referências](#referências)
 
 ## Descrição
+
+O projeto simula o ambiente de uma pequena cidade do Velho Oeste. Para isso, foi utilizado OpenGl 2.1, linguagem de programação C, com as bibliotecas `tinyobj_loader_c.h` para carregar arquivos .obj no OpenGl, `stb_image.h` para carregar texturas nas superfícies, e modelos low poly para o cenário de Velho Oeste, a partir dos quais foi possível construir os prédios da cidade. Para montar os prédios, foi utilizado Blender, que também foi aplicado para a conversão dos arquivos de modelos .fbx para .obj (vide o script em `src/script_fbx_to_obj_blender.py`).
+
+Com isso, foi necessário criar o mundo, que apresenta uma rua principal e uma estrada perpendicular à principal; as ruas possuem casas, prédios, carruagem e demais elementos para criação da ambientação associada ao Velho Oeste.
+
+![Imagem após inicialização do programa.](src/imagens/welcome.png)
+![Bola de feno passando.](src/imagens/velhoOeste.gif)
 
 ## Instalação e Execução
 
@@ -28,9 +34,16 @@
 
 6. Após executar, a janela com o ambiente deve aparecer. É possível se mover no mundo usando as teclas: W, A, S, D e controlar a câmera com Q, E.
 
-## Problemas Encontrados
+## Dificuldades Encontradas
+
+Uma das maiores dificuldades está relacionada a carregar os modelos .obj em que, mais especificamente, foi necessário entender a estrutura de dados usada pela biblioteca `tinyobjloader-c` para armazenar as informações relativas aos modelos importados. Assim, foi necessário estudar para acessar os arrays de dados corretamente.
 
 ## Melhorias Futuras
+
+Como melhorias futuras, podemos listar:
+- Adição de física aos objetos, permitindo que o usuário interaja com o mundo. 
+- Inclusão de dinâmica de dia e noite, bem como outras fontes de luz no ambiente para adicionar complexidade e profundidade ao mundo.
+- Aumento dos limites do mundo, adição de mais prédios e objetos para enriquecer a ambientação e imersão no mundo.
 
 ## Elementos das Atividades Práticas
 
@@ -57,3 +70,11 @@ Atividade 6: Uso de spline de bèzier para implementar o movimento utilizado na 
 - Configuração para importar os modelos no código do projeto.
 - Adição de texturas e iluminação.
 - Construção do interior de uma das estruturas.
+
+## Referências
+
+Bibliotecas e recursos externos utilizados, como já foram mencionados anteriormente:
+
+- [tinyobjloader-c](https://github.com/syoyo/tinyobjloader-c/blob/master/tinyobj_loader_c.h), para carregar os modelos .obj.
+- [stb](https://github.com/nothings/stb/blob/master/stb_image.h), para carregar texturas nos modelos.
+- [Low Poly Wild West](https://lowpolyassets.itch.io/low-poly-wild-west), que oferece modelos low poly disponíveis gratuitamente para uso.
